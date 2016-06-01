@@ -15,6 +15,7 @@ class TTImageViewLayout: UICollectionViewLayout {
     
     var sectionWidth: CGFloat = 50
     var sectionHeight: CGFloat = 20
+    var sectionZIndex: Int = 1024
     
     var cellWidth: CGFloat = 0
     var cellHeight: CGFloat = 140
@@ -22,16 +23,11 @@ class TTImageViewLayout: UICollectionViewLayout {
     var cellGap: CGFloat = 2
     
     var cache = [UICollectionViewLayoutAttributes]()
-    private func cacheKey(indexPath: NSIndexPath, isCell:Bool) -> String {
-        let prefix = isCell ? "cell" : "section"
-        return "\(prefix)_\(indexPath)"
-    }
     
     override func prepareLayout() {
         guard collectionView != nil else {
             return
         }
-        
 
         contentWidth = CGRectGetWidth(collectionView!.bounds)
         cellWidth = contentWidth - sectionWidth
@@ -57,7 +53,6 @@ class TTImageViewLayout: UICollectionViewLayout {
                 yOffset += cellGap + cellHeight
             }
             yOffset += sectionHeight
-            
         }
         
         // Decide Height
@@ -108,27 +103,26 @@ class TTImageViewLayout: UICollectionViewLayout {
         for key in secKeys {
             let cellAttr = sectionSet[key]
             
-            // 1. 和目前的rect.origin.y對齊
-            var curCellFrame = cellAttr!.frame
-            curCellFrame.origin.x = 0
-            curCellFrame.size = CGSizeMake(sectionWidth, sectionHeight)
+            // 1. 對齊畫面最上方，stick在上面
+            var sectionFrame = cellAttr!.frame
+            sectionFrame.origin.x = 0
+            sectionFrame.size = CGSizeMake(sectionWidth, sectionHeight)
             
-            if (curCellFrame.origin.y < currentOffset) {
-                curCellFrame.origin.y = currentOffset
-                
-                NSLog("Section \(key): \(curCellFrame) \(currentOffset)")
+            if (sectionFrame.origin.y < currentOffset) {
+                sectionFrame.origin.y = currentOffset
             }
             
             // 2. 如果有next section的話，要考慮它的位置，調整目前的section位置
             if (nextSectionAttribute != nil) {
-                let distY = CGRectGetMaxY(curCellFrame) - CGRectGetMinY(nextSectionAttribute!.frame)
+                let distY = CGRectGetMaxY(sectionFrame) - CGRectGetMinY(nextSectionAttribute!.frame)
                 if (distY > 0) {
-                    curCellFrame.origin.y -= distY ///< 使它們的間距為 0
+                    sectionFrame.origin.y -= distY ///< 使它們的間距為 0
                 }
             }
             
             let secAttributes = UICollectionViewLayoutAttributes(forSupplementaryViewOfKind: "section", withIndexPath: NSIndexPath(forItem: 0, inSection: key))
-            secAttributes.frame = curCellFrame
+            secAttributes.frame = sectionFrame
+            secAttributes.zIndex = sectionZIndex
             nextSectionAttribute = cellAttr
             
             secResult.append(secAttributes)
@@ -137,12 +131,6 @@ class TTImageViewLayout: UICollectionViewLayout {
         for sec in secResult {
             result.append(sec)
         }
-        
-        NSLog("layoutAttributesForElementsInRect")
-//        NSLog("rect: \(rect)")
-//        NSLog("cell attributes \(result)")
-        NSLog("sectionSet \(sectionSet)")
-//        NSLog("section attributes \(secResult.count)")
         
         return result
     }
